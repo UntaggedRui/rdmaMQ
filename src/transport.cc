@@ -55,7 +55,25 @@ void Transport::open_device_and_alloc_pd() {
     int i = 0;
     for (; i < num_devices; i++) {
         ctx = ibv_open_device(dev_list[i]);
-        if (ctx) break;
+        if (ctx) {
+            int rc = 0;
+            struct ibv_port_attr port_attr;
+            for (int j=0; j < 2; j++) {
+                int ret;
+                ret = ibv_query_port(ctx, j, &port_attr);
+                if (ret == 0) {
+                    if (port_attr.state == IBV_PORT_ACTIVE) {
+                        LOG_INFO("ib device %s, phys_state=%d, state=%d with port %d\n", 
+                        ibv_get_device_name(dev_list[i]), port_attr.phys_state, port_attr.state, j);
+                        rc = 1;
+                        break;
+                    }
+                }
+
+            }
+            if (rc) break;
+
+        }
     }
     assert_exit(ctx != nullptr, "Failed to open ib device " + std::string(ibv_get_device_name(dev_list[i])));
     LOG_INFO("Pick ib device %s\n", ibv_get_device_name(dev_list[i]));
